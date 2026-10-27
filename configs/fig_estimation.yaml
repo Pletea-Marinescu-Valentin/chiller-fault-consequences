@@ -1,0 +1,6 @@
+# Estimated against true weekly energy penalty of every fault-week, with a plant
+# power meter and with the virtual meter (reads the estimates of tab_estimation).
+groups:
+  chiller: [chiller_bias, chiller_fouling]
+  bypass: [valve_leak, valve_stuck]
+resolvable_quantile: 0.95   # of the fault-free counterfactual error, as in tab_estimation

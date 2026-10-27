@@ -92,6 +92,20 @@ def main():
     print(by_type.round(2).to_string())
     print(res[res.multiple.isin(MULTIPLE_WORD)].round(3).to_string(index=False))
 
+    # Table: decision value of every rule at kappa = 0, the anchor and ten times the anchor
+    shown = [m for m in MULTIPLE_WORD]
+    lines = ["\\begin{tabular}{lrrr}", "\\hline",
+             "Priority rule & " + " & ".join(
+                 "$\\kappa=0$" if m == 0 else (f"$\\kappa={m:g}\\kappa_0$" if m != 1 else
+                                               "$\\kappa=\\kappa_0$") for m in shown) + " \\\\",
+             "\\hline"]
+    for m in METHODS:
+        values = [res[(res.multiple == x) & (res.method == m)].value.iloc[0] for x in shown]
+        lines.append(f"{METHODS[m][0]} & " + " & ".join(fmt_float(v, 2) for v in values) + " \\\\")
+    lines += ["\\hline", "\\end{tabular}"]
+    GENERATED.mkdir(parents=True, exist_ok=True)
+    (GENERATED / f"{NAME}_table.tex").write_text("\n".join(lines) + "\n")
+
     numbers = {
         "weeks": f"{weeks}", "faulty cases": f"{len(lbnl_rtu.FAULTY)}",
         "fault types": f"{len(lbnl_rtu.FAULT_TYPES)}", "folds": f"{n}",

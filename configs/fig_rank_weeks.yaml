@@ -1,0 +1,3 @@
+# Weekly repair-priority rank of every fault under the true priced consequence
+# (kappa from configs/fig_consequences.yaml); rank 1 is repaired first.
+ramp: ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]  # sequential blue
