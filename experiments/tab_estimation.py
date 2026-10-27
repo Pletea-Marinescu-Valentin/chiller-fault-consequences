@@ -9,7 +9,7 @@ from _common import (GENERATED, TABLES, fmt_float, fmt_int, load_config, write_n
                      write_results)
 from cfc.context import N_WEEKS, folds, weekly_mean, weekly_sum
 from cfc.datasets.lbnl_chiller import BASIC_POINTS, CASES, FAULT_TYPES, FAULTY, load_case
-from cfc.estimators import AnomalyScore, counterfactual, penalty
+from cfc.estimators import AnomalyScore, CrossFitted, counterfactual, penalty
 from cfc.virtual_meter import VirtualMeter, diagnosed_inputs
 from fig_consequences import SHORT
 
@@ -44,6 +44,21 @@ def main():
     vm0, v0, base_v0 = variants[()]
     cf_unmetered = penalty(v0, base_v0, ff, fold)
     vm_error_ff = weekly_sum(v0 - ff.PLANT_POW.to_numpy(), ff.index)
+    # Ablations: one map from all basic points to plant power, and the component
+    # meter without the diagnosis (mean weekly error of virtual vs actual power)
+    basic = [p for p in BASIC_POINTS if ff[p].std() > 1e-6]
+    black = CrossFitted(cfg["virtual_meter"], n, seed).fit(ff[basic].to_numpy(),
+                                                           ff.PLANT_POW.to_numpy(), fold)
+    ablation = {}
+    for c in ("ct_bias_-2", "chiller_bias_-2"):
+        d = frames[c]
+        ablation[c] = {
+            "true": float(np.mean(weekly_sum(d.PLANT_POW - ff.PLANT_POW, d.index))),
+            "black_box": float(np.mean(weekly_sum(black.predict(d[basic].to_numpy(), fold)
+                                                  - d.PLANT_POW.to_numpy(), d.index))),
+            "no_diagnosis": float(np.mean(weekly_sum(vm0.predict(d, fold) - d.PLANT_POW.to_numpy(),
+                                                     d.index)))}
+    print(ablation)
     print(f"models fitted in {time.time() - t0:.0f} s")
 
     points = [p for p in BASIC_POINTS if p not in cfg["anomaly_exclude"] and ff[p].std() > 1e-6]
@@ -98,7 +113,7 @@ def main():
         "service_counterfactual_error_kh": cf_service.tolist(),
         "virtual_meter_error_ff_kwh": vm_error_ff.tolist(), "anomaly_ff": anomaly_ff.tolist(),
         "by_type": by_type.reset_index().to_dict("records"),
-        "by_case": by_case.reset_index().to_dict("records")})
+        "by_case": by_case.reset_index().to_dict("records"), "ablation": ablation})
 
     order = ["chiller_bias", "dp_bias", "ct_bias", "ct_fouling", "chiller_fouling", "ct_pi",
              "valve_leak", "valve_stuck"]
@@ -144,6 +159,9 @@ def main():
                       "vm bias tower minus two": "ct_bias_-2",
                       "vm bias dp minus twenty": "dp_bias_-20"}.items():
         numbers[key] = fmt_int(by_case.loc[case, "vm_bias"])
+    numbers["true penalty tower minus two"] = fmt_int(ablation["ct_bias_-2"]["true"])
+    numbers["black box bias tower minus two"] = fmt_int(ablation["ct_bias_-2"]["black_box"])
+    numbers["no diagnosis bias chiller minus two"] = fmt_int(ablation["chiller_bias_-2"]["no_diagnosis"])
     for f in order:
         key = f.replace("_", " ")
         numbers[f"{key} resolvable pct"] = f"{100 * by_type.loc[f, 'resolvable']:.0f}"

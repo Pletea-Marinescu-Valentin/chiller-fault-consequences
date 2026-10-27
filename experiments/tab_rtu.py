@@ -106,8 +106,8 @@ def main():
         "negative service cases": f"{int((annual.d_service < 0).sum())}",
         "tau level energy": fmt_float(tau_level_energy, 2),
         "tau level cost": fmt_float(tau_level_cost, 2),
-        "cf metered pct": f"{100 * np.abs(cf_metered).mean() / ff_week.mean():.0f}",
-        "cf unmetered pct": f"{100 * np.abs(cf_unmetered).mean() / ff_week.mean():.0f}",
+        "cf metered pct": fmt_float(100 * np.abs(cf_metered).mean() / ff_week.mean()),
+        "cf unmetered pct": fmt_float(100 * np.abs(cf_unmetered).mean() / ff_week.mean()),
         "vm ff pct": fmt_float(100 * np.abs(vm_error_ff).mean() / ff_week.mean()),
         "service cf mae": fmt_float(np.abs(cf_service).mean()),
     }

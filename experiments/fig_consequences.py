@@ -8,7 +8,7 @@ from matplotlib.ticker import FuncFormatter
 from _common import (BLUE, GENERATED, INK_SECONDARY, ORANGE, TABLES, TEXT_WIDTH, figure,
                      fmt_float, fmt_int, load_config, save_figure, write_numbers, write_results)
 from cfc.consequences import cost, weekly_truth
-from cfc.context import weekly_sum
+from cfc.context import weekly_mean, weekly_sum
 from cfc.datasets.lbnl_chiller import CASES, COMPONENT_POWER, FAULT_TYPES, load_case
 
 NAME = "fig_consequences"
@@ -77,13 +77,17 @@ def main():
     for case in ("chiller_bias_-1", "chiller_bias_-2"):
         e = truth[truth.case == case].d_energy.to_numpy()
         share_no_load[case] = e[no_load].sum() / e.sum()
+    # The chiller sensor bias decides the regime of the secondary loop in weeks without load
+    winter_flow = {case: float(weekly_mean(load_case(case, ["CWL_SEC_CW_FLOW"]).CWL_SEC_CW_FLOW,
+                                           ff.index)[no_load].mean())
+                   for case in ("fault_free", "chiller_bias_-2", "chiller_bias_+2")}
 
     payload = {"config": cfg, "fault_free": {"energy_mwh": ff_energy, "cooling_mwh": ff_cooling,
                                              "components_mwh": ff_comp},
                "kappa_anchor": kappa_anchor, "annual": annual.reset_index().to_dict("records"),
                "tau_level_energy": tau_level_energy, "tau_level_cost": tau_level_cost,
                "weekly_tau_median": {k: float(np.median(v)) for k, v in taus.items()},
-               "share_no_load": share_no_load}
+               "share_no_load": share_no_load, "winter_flow_lps": winter_flow}
     write_results(NAME, payload)
     TABLES.mkdir(parents=True, exist_ok=True)
     truth.to_csv(TABLES / "consequences_weekly.csv", index=False, float_format="%.3f")
@@ -149,15 +153,18 @@ def main():
         "min abs penalty": f"{annual.d_energy.abs().min() / 1000:.1f}",
         "negative energy cases": f"{int((annual.d_energy < 0).sum())}",
         "saving with deficit cases": f"{int(((annual.d_energy < 0) & (annual.d_service > 0)).sum())}",
-        "tau level energy": f"{tau_level_energy:.2f}".replace("-", "$-$"),
-        "tau level cost": f"{tau_level_cost:.2f}".replace("-", "$-$"),
+        "tau level energy": fmt_float(tau_level_energy, 2),
+        "tau level cost": fmt_float(tau_level_cost, 2),
         "weekly tau energy median": f"{np.median(taus['d_energy']):.2f}",
-        "weekly tau energy low": f"{np.quantile(taus['d_energy'], 0.1):.2f}".replace("-", "$-$"),
+        "weekly tau energy low": fmt_float(np.quantile(taus["d_energy"], 0.1), 2),
         "weekly tau cost median": f"{np.median(taus['cost']):.2f}",
-        "weekly tau cost low": f"{np.quantile(taus['cost'], 0.1):.2f}".replace("-", "$-$"),
+        "weekly tau cost low": fmt_float(np.quantile(taus["cost"], 0.1), 2),
         "no load share chiller one": f"{100 * share_no_load['chiller_bias_-1']:.0f}",
         "no load share chiller two": f"{100 * share_no_load['chiller_bias_-2']:.0f}",
         "no load weeks": f"{int(no_load.sum())}",
+        "winter flow ff": f"{winter_flow['fault_free']:.0f}",
+        "winter flow chiller minus two": f"{winter_flow['chiller_bias_-2']:.0f}",
+        "winter flow chiller plus two": f"{winter_flow['chiller_bias_+2']:.1f}",
     }
     pick = {"chiller minus one": "chiller_bias_-1", "chiller minus two": "chiller_bias_-2",
             "chiller plus one": "chiller_bias_+1", "chiller plus two": "chiller_bias_+2",
