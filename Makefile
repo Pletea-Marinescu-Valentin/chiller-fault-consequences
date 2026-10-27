@@ -1,16 +1,18 @@
 # Every figure and number in the paper is produced by a script listed here.
 # Convention: experiments/fig_*.py write to paper/figs/, experiments/tab_*.py
 # write to results/tables/. EXPERIMENTS runs them in dependency order:
-# tab_estimation writes the weekly estimates that fig_ranking reads.
+# tab_estimation writes the weekly estimates that fig_ranking reads, and
+# tab_rtu replicates the pipeline on the simulated rooftop unit.
 
 PYTHON ?= python
 
-EXPERIMENTS := tab_audit fig_consequences fig_weekly tab_estimation fig_ranking
+EXPERIMENTS := tab_audit fig_consequences fig_weekly tab_estimation fig_ranking tab_rtu
 
 .PHONY: data test experiments verify reproduce paper clean
 
 data:
 	$(PYTHON) scripts/download/lbnl_chiller.py
+	$(PYTHON) scripts/download/lbnl_rtu.py
 
 test:
 	$(PYTHON) -m pytest

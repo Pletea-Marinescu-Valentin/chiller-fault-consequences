@@ -14,13 +14,13 @@ import pandas as pd
 from .datasets.lbnl_chiller import CASES
 
 
-def intensity_level(case: pd.Series) -> pd.Series:
-    return case.map(lambda c: CASES[c].level)
+def intensity_level(case: pd.Series, cases: dict = CASES) -> pd.Series:
+    return case.map(lambda c: cases[c].level)
 
 
-def type_priority(case_consequence: pd.Series) -> pd.Series:
+def type_priority(case_consequence: pd.Series, cases: dict = CASES) -> pd.Series:
     """Leave-one-case-out mean consequence of the case's fault type, indexed by case."""
-    fault = pd.Series({c: CASES[c].fault for c in case_consequence.index})
+    fault = pd.Series({c: cases[c].fault for c in case_consequence.index})
     prior = {}
     for c in case_consequence.index:
         same = (fault == fault[c]) & (fault.index != c)

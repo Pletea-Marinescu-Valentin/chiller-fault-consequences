@@ -8,6 +8,7 @@ from _common import (AQUA, BLUE, GENERATED, GREEN, INK_MUTED, MAGENTA, ORANGE, T
                      figure, fmt_float, fmt_int, load_config, save_figure, write_numbers,
                      write_results)
 from cfc.consequences import cost
+from cfc.datasets.lbnl_chiller import CASES
 from cfc.proxies import intensity_level, type_priority
 from cfc.ranking import decision_value, kendall, sample_portfolios, within_group_kendall
 from tab_estimation import ESTIMATES
@@ -25,7 +26,7 @@ PROXIES = ("anomaly", "type", "intensity")
 KAPPA_WORD = {0: "zero", 10: "low", 70: "ref", 700: "high"}
 
 
-def scores(est: pd.DataFrame, kappa: float, envelope_week: float
+def scores(est: pd.DataFrame, kappa: float, envelope_week: float, cases: dict = CASES
            ) -> tuple[np.ndarray, dict[str, np.ndarray]]:
     truth = cost(est.d_energy, est.d_service, kappa)
     annual = pd.Series(truth, index=est.index).groupby(est.case).sum()
@@ -36,20 +37,20 @@ def scores(est: pd.DataFrame, kappa: float, envelope_week: float
         "unmetered_abstain": cost(abstain, est.s_hat, kappa),
         "service": cost(np.zeros(len(est)), est.s_hat, kappa),
         "anomaly": est.anomaly.to_numpy(),
-        "type": est.case.map(type_priority(annual)).to_numpy(),
-        "intensity": intensity_level(est.case).to_numpy(),
+        "type": est.case.map(type_priority(annual, cases)).to_numpy(),
+        "intensity": intensity_level(est.case, cases).to_numpy(),
     }
 
 
 def evaluate(est: pd.DataFrame, kappas, size: int, capacity: int, n: int, seed: int,
-             envelope_week: float, same_week: bool = True) -> pd.DataFrame:
+             envelope_week: float, same_week: bool = True, cases: dict = CASES) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
     case, week = est.case.to_numpy(), est.week.to_numpy()
     mixed = sample_portfolios(case, week, size, n, rng)
     same = sample_portfolios(case, week, size, n, rng, same_week=True) if same_week else None
     rows = []
     for kappa in kappas:
-        truth, s = scores(est, kappa, envelope_week)
+        truth, s = scores(est, kappa, envelope_week, cases)
         for m, score in s.items():
             tie = np.random.default_rng(seed + 1)
             dv = decision_value(score, truth, mixed, capacity, tie)

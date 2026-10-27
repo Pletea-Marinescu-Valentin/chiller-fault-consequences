@@ -48,6 +48,14 @@ COMPONENTS = {
                                ("CHL_STA_1", "CHL_STA_2", "CHL_STA_3", "TWV_CTRL"))],
 }
 
+# Rooftop unit: compressor power from the stage and the air temperatures around the
+# coils, supply-fan power from the stage (the fan speed follows the stage).
+RTU_COMPONENTS = {
+    "compressor": [Member(("RTU_COMP_POW",), ("RTU_STG_STA", "OA_TEMP", "RTU_SA_TEMP",
+                                               "RTU_RA_TEMP"))],
+    "fan": [Member(("RTU_SA_FAN_POW",), ("RTU_STG_STA",))],
+}
+
 # Redundant sensors downstream of a unit sensor: the primary supply header
 # carries chiller 1's leaving water whenever chiller 1 runs alone.
 SUBSTITUTES = {"CHL_SW_TEMP_1": "CWL_PRI_SW_TEMP"}
@@ -69,27 +77,31 @@ def diagnosed_inputs(frame: pd.DataFrame, point: str | None) -> tuple[pd.DataFra
 
 
 class VirtualMeter:
-    def __init__(self, params: dict, n_folds: int, seed: int = 0, drop: tuple[str, ...] = ()):
+    """Sum of cross-fitted component models; `components` defaults to the chiller plant."""
+
+    def __init__(self, params: dict, n_folds: int, seed: int = 0, drop: tuple[str, ...] = (),
+                 components: dict[str, list[Member]] | None = None):
         self.params, self.n_folds, self.seed, self.drop = params, n_folds, seed, tuple(drop)
+        self.components = COMPONENTS if components is None else components
 
     def _inputs(self, member: Member) -> list[str]:
         return [p for p in member.inputs if p not in self.drop]
 
     def fit(self, ff: pd.DataFrame, fold: np.ndarray) -> "VirtualMeter":
         self.models = {}
-        for name, members in COMPONENTS.items():
+        for name, members in self.components.items():
             X = np.vstack([ff[self._inputs(m)].to_numpy() for m in members])
             y = np.concatenate([ff[list(m.targets)].sum(axis=1).to_numpy() for m in members])
             self.models[name] = CrossFitted(self.params, self.n_folds, self.seed).fit(
                 X, y, np.tile(fold, len(members)))
-        used = sorted({p for ms in COMPONENTS.values() for m in ms for p in self._inputs(m)})
+        used = sorted({p for ms in self.components.values() for m in ms for p in self._inputs(m)})
         lo, hi = ff[used].min(), ff[used].max()
         self.envelope = (lo, hi)
         return self
 
     def component_power(self, frame: pd.DataFrame, fold: np.ndarray) -> pd.DataFrame:
         out = {}
-        for name, members in COMPONENTS.items():
+        for name, members in self.components.items():
             out[name] = sum(self.models[name].predict(frame[self._inputs(m)].to_numpy(), fold)
                             for m in members)
         return pd.DataFrame(out, index=frame.index)
