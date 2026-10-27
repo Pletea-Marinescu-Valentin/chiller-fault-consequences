@@ -1,12 +1,14 @@
 # Every figure and number in the paper is produced by a script listed here.
 # Convention: experiments/fig_*.py write to paper/figs/, experiments/tab_*.py
 # write to results/tables/. EXPERIMENTS runs them in dependency order:
-# tab_estimation writes the weekly estimates that fig_ranking reads, and
-# tab_rtu replicates the pipeline on the simulated rooftop unit.
+# fig_consequences writes the weekly ground truth that fig_rank_weeks reads,
+# tab_estimation writes the weekly estimates that fig_estimation and
+# fig_ranking read, and tab_rtu replicates the pipeline on the simulated
+# rooftop unit.
 
 PYTHON ?= python
 
-EXPERIMENTS := tab_audit fig_consequences fig_weekly tab_estimation fig_ranking tab_rtu
+EXPERIMENTS := tab_audit fig_consequences fig_weekly fig_rank_weeks tab_estimation fig_estimation fig_ranking tab_rtu
 
 .PHONY: data test experiments verify reproduce paper clean
 

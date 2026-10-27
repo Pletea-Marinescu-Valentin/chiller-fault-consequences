@@ -27,7 +27,7 @@ checking that you obtain exactly the same results.
 | Python | 3.11 or newer. The paper was produced with **Python 3.13.12** on Windows 11 (x86-64). |
 | Disk | about 4 GB free (two archives of 1.6 GB and 0.3 GB, 1.9 GB of parquet cache) |
 | Network | to download the public datasets once |
-| Time | download, about 15 s of tests and about 2.5 minutes of experiments |
+| Time | download, about 15 s of tests and about 3 minutes of experiments |
 | `make` | optional; every step below also has a plain command |
 
 No GPU, no commercial software and no account are needed.
@@ -110,11 +110,12 @@ With `make`:
 make experiments
 ```
 
-Without `make` (the order matters: `tab_estimation` writes the weekly estimates
-that `fig_ranking` reads):
+Without `make` (the order matters: `fig_consequences` writes the weekly ground
+truth that `fig_rank_weeks` reads, and `tab_estimation` writes the weekly
+estimates that `fig_estimation` and `fig_ranking` read):
 
 ```bash
-for e in tab_audit fig_consequences fig_weekly tab_estimation fig_ranking tab_rtu; do
+for e in tab_audit fig_consequences fig_weekly fig_rank_weeks tab_estimation fig_estimation fig_ranking tab_rtu; do
   python experiments/$e.py || break
 done
 ```
@@ -130,12 +131,16 @@ and writes:
 
 | Script | Paper item | Run time* |
 |---|---|---|
-| `experiments/tab_audit.py` | Sec. III-B, data audit: files, swapped labels, duplicates, plant regimes | 8 s |
-| `experiments/fig_consequences.py` | Table I and Fig. 1, annual consequences of every fault | 4 s |
-| `experiments/fig_weekly.py` | Fig. 2, weekly plant energy and penalties | 2 s |
+| `experiments/tab_audit.py` | Sec. III-C, data audit: files, swapped labels, duplicates, plant regimes | 8 s |
+| `experiments/fig_consequences.py` | Table I and Fig. 2, annual consequences of every fault | 4 s |
+| `experiments/fig_weekly.py` | Fig. 3, weekly plant energy and penalties | 2 s |
+| `experiments/fig_rank_weeks.py` | Fig. 4, weekly repair-priority rank of every fault | 2 s |
 | `experiments/tab_estimation.py` | Table II, weekly estimates with and without power meters | 1 min 30 s |
-| `experiments/fig_ranking.py` | Table III and Fig. 3, decision value of the priority rules | 7 s |
-| `experiments/tab_rtu.py` | Sec. IV-D, replication on the simulated rooftop unit | 10 s |
+| `experiments/fig_estimation.py` | Fig. 5, estimated against true weekly penalties | 2 s |
+| `experiments/fig_ranking.py` | Table III and Fig. 6, decision value of the priority rules, week bootstrap | 30 s |
+| `experiments/tab_rtu.py` | Table IV, replication on the simulated rooftop unit | 10 s |
+
+Fig. 1 of the paper, the diagram of the method, is drawn in the manuscript.
 
 \* Measured on a 16-thread x86-64 laptop.
 
@@ -151,7 +156,7 @@ a subset of these numbers; the rest are additional values written by the same
 scripts. The expected output is:
 
 ```
-390 of 390 numbers match the paper.
+433 of 433 numbers match the paper.
 ```
 
 Any difference is listed with the macro name, the reference value and your
