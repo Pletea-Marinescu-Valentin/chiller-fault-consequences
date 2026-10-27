@@ -1,0 +1,17 @@
+# Replication on the simulated rooftop unit (LBNL RTU set, NREL): 24 faulty runs
+# of 100 days, same pipeline as the chiller plant. Service = zone air temperature
+# above its cooling setpoint. Fourteen full weeks, interleaved over seven folds.
+seed: 0
+n_folds: 7
+counterfactual: {n_estimators: 300, learning_rate: 0.05, num_leaves: 15, min_child_samples: 20,
+                 subsample: 0.8, subsample_freq: 1, colsample_bytree: 0.9}
+virtual_meter: {n_estimators: 300, learning_rate: 0.05, num_leaves: 15, min_child_samples: 20}
+anomaly: {n_estimators: 200, learning_rate: 0.05, num_leaves: 15, min_child_samples: 20}
+anomaly_points: [RTU_SA_TEMP, RTU_RA_TEMP, RTU_STG_STA, ZA_TEMP]
+envelope_margin: 0.05
+envelope_week: 0.1
+nominal_cop: 3.81          # inventory, Table S1; anchors kappa like the chiller COP does
+kappa_multiples: [0, 0.1, 0.3, 1, 3, 10, 30]   # kappa in units of the anchor
+portfolio_size: 5
+capacity: 1
+portfolios: 20000
