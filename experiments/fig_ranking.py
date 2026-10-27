@@ -63,6 +63,26 @@ def evaluate(est: pd.DataFrame, kappas, size: int, capacity: int, n: int, seed: 
     return pd.DataFrame(rows)
 
 
+def bootstrap_weeks(est: pd.DataFrame, kappas, size: int, capacity: int, n: int, seed: int,
+                    envelope_week: float, replicates: int) -> pd.DataFrame:
+    """Fleet decision values over a bootstrap of weeks.
+
+    Weeks are drawn with replacement and relabelled, so a replicate keeps all
+    faults of a week together (they share weather and counterfactual error).
+    """
+    rng = np.random.default_rng(seed + 2)
+    weeks = np.sort(est.week.unique())
+    by_week = {w: g for w, g in est.groupby("week")}
+    rows = []
+    for b in range(replicates):
+        pick = rng.choice(weeks, size=len(weeks), replace=True)
+        boot = pd.concat([by_week[w].assign(week=i) for i, w in enumerate(pick)],
+                         ignore_index=True)
+        rows.append(evaluate(boot, kappas, size, capacity, n, seed + 3 + b, envelope_week,
+                             same_week=False).assign(replicate=b))
+    return pd.concat(rows, ignore_index=True)
+
+
 def main():
     cfg = load_config(NAME)
     est = pd.read_csv(TABLES / f"{ESTIMATES}.csv")
@@ -80,25 +100,31 @@ def main():
     variants = pd.concat([evaluate(est, ref, s, c, n, seed, env, same_week=False)
                           .assign(size=s, capacity=c) for s, c in cfg["variants"]],
                          ignore_index=True)
+    boot = bootstrap_weeks(est, cfg["table_kappas"], size, cap, cfg["bootstrap"]["portfolios"],
+                           seed, env, cfg["bootstrap"]["replicates"])
+    ci = boot.groupby(["kappa", "method"]).value.quantile([0.025, 0.975]).unstack()
     write_results(NAME, {"config": cfg, "results": res.to_dict("records"),
                          "leave_one_type_out": loto.to_dict("records"),
-                         "variants": variants.to_dict("records")})
+                         "variants": variants.to_dict("records"),
+                         "bootstrap_ci": ci.reset_index().to_dict("records")})
     res.to_csv(TABLES / f"{NAME}.csv", index=False, float_format="%.4f")
     print(res[res.kappa.isin(ref)].round(3).to_string(index=False))
     span = loto.groupby(["kappa", "method"]).value.agg(["min", "max"])
     print(span.round(3).to_string())
     print(variants.round(3).to_string(index=False))
+    print(ci.round(3).to_string())
 
-    # Table for the reference prices
-    lines = ["\\begin{tabular}{llrrrr}", "\\hline",
-             "$\\kappa$ & Priority rule & $\\tau$ & $\\bar\\tau_{\\mathrm{week}}$ & "
-             "$V_{\\mathrm{fleet}}$ & $V_{\\mathrm{same}}$ \\\\", "\\hline"]
+    # Table for the reference prices, with 95 % bootstrap intervals over weeks
+    lines = ["\\begin{tabular}{llrlr}", "\\hline",
+             "$\\kappa$ & Priority rule & $\\tau$ & $V_{\\mathrm{fleet}}$ [95\\% CI] & "
+             "$V_{\\mathrm{same}}$ \\\\", "\\hline"]
     for kappa in cfg["table_kappas"]:
         sub = res[res.kappa == kappa].set_index("method")
         for i, m in enumerate(METHODS):
             r = sub.loc[m]
+            lo, hi = ci.loc[(kappa, m)]
             lines.append(f"{kappa if i == 0 else ''} & {METHODS[m][0]} & {fmt_float(r.tau, 2)} & "
-                         f"{fmt_float(r.tau_week, 2)} & {fmt_float(r.value, 2)} & "
+                         f"{fmt_float(r.value, 2)} [{fmt_float(lo, 2)}, {fmt_float(hi, 2)}] & "
                          f"{fmt_float(r.value_same, 2)} \\\\")
         lines.append("\\hline")
     lines.append("\\end{tabular}")
@@ -144,6 +170,22 @@ def main():
             numbers[f"loto max {m} {k}"] = fmt_float(span.loc[(kappa, m), "max"], 2)
         numbers[f"loto max proxy {k}"] = fmt_float(
             max(span.loc[(kappa, m), "max"] for m in PROXIES), 2)
+    for kappa in cfg["table_kappas"]:
+        for m in METHODS:
+            lo, hi = ci.loc[(kappa, m)]
+            numbers[f"ci low {m} {KAPPA_WORD[kappa]}"] = fmt_float(lo, 2)
+            numbers[f"ci high {m} {KAPPA_WORD[kappa]}"] = fmt_float(hi, 2)
+    # Annual value of ranking by the metered estimate instead of the best proxy:
+    # one decision per week, regret in kWh(-equivalent) at an illustrative price
+    per_year, price = cfg["decisions_per_year"], cfg["price_eur_per_kwh"]
+    for kappa in ref:
+        sub = res[res.kappa == kappa].set_index("method")
+        best = min(PROXIES, key=lambda m: sub.loc[m, "regret"])
+        gap = (sub.loc[best, "regret"] - sub.loc["metered", "regret"]) * per_year
+        numbers[f"annual gap mwh {KAPPA_WORD[kappa]}"] = fmt_int(gap / 1000)
+        numbers[f"annual gap keur {KAPPA_WORD[kappa]}"] = fmt_int(gap * price / 1000)
+        numbers[f"annual gap proxy {KAPPA_WORD[kappa]}"] = METHODS[best][0].lower()
+    numbers["price"] = f"{price:.2f}"
     for (s, c), g in variants.groupby(["size", "capacity"]):
         words = {5: "five", 10: "ten", 1: "one", 2: "two", 3: "three"}
         for kappa in ref:

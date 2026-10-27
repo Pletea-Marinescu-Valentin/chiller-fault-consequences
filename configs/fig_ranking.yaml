@@ -10,3 +10,6 @@ portfolio_size: 5
 capacity: 1
 portfolios: 20000
 variants: [[5, 2], [10, 1], [10, 3]]   # (size, capacity) reported in the text
+bootstrap: {replicates: 500, portfolios: 5000}   # weeks resampled with replacement
+decisions_per_year: 52       # one repair decision per week
+price_eur_per_kwh: 0.20      # illustrative electricity price for the annual value
