@@ -1,0 +1,3 @@
+# Weekly fault-free plant energy and the weekly energy penalty of selected faults.
+cases: [chiller_bias_-2, chiller_bias_+2, dp_bias_-20, chiller_fouling_65]
+no_flow_lps: 1.0           # weekly mean secondary flow below which the loop is idle

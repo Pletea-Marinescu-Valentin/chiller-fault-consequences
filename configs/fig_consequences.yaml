@@ -1,0 +1,5 @@
+# Ground-truth consequences of the 23 faulty years against the fault-free year
+# (paired difference, same weather), annual and weekly.
+kappa: 70                  # kWh per K h of supply excess, near the physical anchor the experiment prints
+order: [chiller_bias, dp_bias, ct_bias, ct_fouling, chiller_fouling, ct_pi, valve_leak, valve_stuck]
+no_load_mwh: 1.0           # a week with less fault-free cooling than this has no cooling load
