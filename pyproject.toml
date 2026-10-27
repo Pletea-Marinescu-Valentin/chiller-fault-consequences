@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chiller-fault-consequences"
+version = "0.1.0"
+description = "Operational consequences of chilled-water plant faults, estimated from BAS data, and repair prioritization"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Alin-Constantin Popa" },
+    { name = "Valentin Pletea-Marinescu" },
+    { name = "Ciprian-Gabriel Lupu" },
+    { name = "Duc Lich Luu" },
+]
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.1",
+    "pyarrow>=14",
+    "scikit-learn>=1.3",
+    "lightgbm>=4.1",
+    "matplotlib>=3.8",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
