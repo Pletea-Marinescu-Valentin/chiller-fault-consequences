@@ -1,0 +1,7 @@
+# Data audit of the LBNL chiller-plant archive: file inventory, label checks,
+# shared weather, near-duplicate cases and the fault-free operating regimes.
+tower_approach_f: 8.0        # tower setpoint = max(T_wb + approach, minimum), inventory Eq. (3)
+tower_min_f: 60.0
+reset_f: {chw_min: 44.0, chw_max: 54.0, oat_min: 60.0, oat_max: 80.0}  # reset as logged
+duplicate_tolerance: 0.01     # relative difference of annual energy and service
+no_flow_lps: 1.0              # weekly mean secondary flow below which the loop is idle
