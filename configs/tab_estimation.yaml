@@ -1,0 +1,15 @@
+# Consequence estimates from BAS data for every (fault, week): energy penalty
+# with a plant power meter and without meters (virtual meter on basic points),
+# service deficit, and the anomaly magnitude used as a priority proxy.
+# All models are fitted on the fault-free year and cross-fitted over
+# interleaved weekly folds (week w in fold w mod n_folds).
+seed: 0
+n_folds: 13
+counterfactual: {n_estimators: 600, learning_rate: 0.03, num_leaves: 31, min_child_samples: 20,
+                 subsample: 0.8, subsample_freq: 1, colsample_bytree: 0.9}
+virtual_meter: {n_estimators: 300, learning_rate: 0.05, num_leaves: 15, min_child_samples: 20}
+anomaly: {n_estimators: 200, learning_rate: 0.05, num_leaves: 15, min_child_samples: 20}
+# Weather and setpoints are inputs or references, not process variables
+anomaly_exclude: [OA_TEMP, OA_TEMP_WB, CT_SW_TEMPSPT, CWL_PRI_SW_TEMPSPT, CWL_SEC_DPSPT]
+envelope_margin: 0.05      # fraction of the fault-free range added on both sides
+envelope_week: 0.1         # a week is out of envelope if more of its hours are
